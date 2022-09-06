@@ -5,6 +5,16 @@ const draw = (ctx, color, x, y, width, height) => {
   ctx.fillRect(x - (width / 2), y - (height / 2), width, height);
 };
 
+/** @type {(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, v: Vec2, width: number, height: number) => void} */
+const drawVec = (ctx, color, x, y, v, width, height) => {
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + v.x, y + v.y);
+  ctx.stroke();
+};
+
 class Vec2 {
   /** @type {number} */
   x;
@@ -58,18 +68,26 @@ const entities = [];
 
 const camera = new Vec2();
 
+/** @type {(x: number, y: number, target: Entity) => boolean} */
+const intersects = (x, y, target) =>
+  x >= target.pos.x - target.width / 2 &&
+  x <= target.pos.x + target.width / 2 &&
+  y >= target.pos.y - target.height / 2 &&
+  y <= target.pos.y + target.height / 2;
+
 /** @type {(entity: Entity, movement: Vec2, entities: Entity[]) => Vec2} */
 const collide = (entity, movement, entities) => {
   const changedPos = new Vec2(entity.pos.x, entity.pos.y).add(movement);
   for (let i = 0; i < entities.length; i++) {
     const target = entities[i];
     if (target === entity) continue;
-    if (
-      changedPos.x >= target.pos.x - target.width / 2 &&
-      changedPos.x <= target.pos.x + target.width / 2 &&
-      changedPos.y >= target.pos.y - target.height / 2 &&
-      changedPos.y <= target.pos.y + target.height / 2
-    ) {
+    if (intersects(changedPos.x, changedPos.y, target)) {
+      if (!intersects(entity.pos.x, changedPos.y, target)) {
+        return new Vec2(0, movement.y);
+      }
+      if (!intersects(changedPos.x, entity.pos.y, target)) {
+        return new Vec2(movement.x, 0);
+      }
       return new Vec2(0, 0);
     }
   }
@@ -79,7 +97,6 @@ const collide = (entity, movement, entities) => {
 /** @type {(ctx: CanvasRenderingContext2D, delta: number, input: Input) => void} */
 export const updateAndRender = (ctx, delta, input) => {
   const { width, height } = ctx.canvas;
-  ctx.clearRect(0, 0, width, height);
   /** @type {Entity} */
   if (entities.length === 0) {
     const player = {
@@ -127,8 +144,10 @@ export const updateAndRender = (ctx, delta, input) => {
   );
 
   player.pos.add(movement);
-  camera.add(movement);
+  camera.x = player.pos.x - (width / 2);
+  camera.y = player.pos.y - (height / 2);
 
+  ctx.clearRect(0, 0, width, height);
   for (const entity of entities) {
     draw(
       ctx,
@@ -139,4 +158,13 @@ export const updateAndRender = (ctx, delta, input) => {
       entity.height,
     );
   }
+  drawVec(
+    ctx,
+    "pink",
+    width / 2,
+    height / 2,
+    movement.mul(10),
+    width,
+    height,
+  );
 };

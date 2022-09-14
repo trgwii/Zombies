@@ -68,6 +68,7 @@ class Vec2 {
  * @prop {number} mouseX
  * @prop {number} mouseY
  * @prop {boolean} speed
+ * @prop {boolean} heal
  */
 
 /** @type {Entity[]} */
@@ -84,46 +85,22 @@ const intersects = (x, y, width, depth, target) =>
 
 /** @type {(entity: Entity, movement: Vec2, entities: Entity[]) => Vec2} */
 const collide = (entity, movement, entities) => {
-  const changedPos = new Vec2(entity.pos.x, entity.pos.y).add(movement);
+  const m = new Vec2(movement.x, movement.y);
+  let newPos = new Vec2(entity.pos.x, entity.pos.y).add(m);
   for (let i = 0; i < entities.length; i++) {
-    const target = entities[i];
-    if (target === entity) continue;
-    if (!target.massive) continue;
-    if (
-      intersects(
-        changedPos.x,
-        changedPos.y,
-        entity.width,
-        entity.depth,
-        target,
-      )
-    ) {
-      if (
-        !intersects(
-          entity.pos.x,
-          changedPos.y,
-          entity.width,
-          entity.depth,
-          target,
-        )
-      ) {
-        return collide(entity, new Vec2(0, movement.y), entities);
-      }
-      if (
-        !intersects(
-          changedPos.x,
-          entity.pos.y,
-          entity.width,
-          entity.depth,
-          target,
-        )
-      ) {
-        return collide(entity, new Vec2(movement.x, 0), entities);
-      }
-      return new Vec2(0, 0);
+    const t = entities[i];
+    if (t === entity) continue;
+    if (!t.massive) continue;
+    if (intersects(entity.pos.x, newPos.y, entity.width, entity.depth, t)) {
+      m.y = 0;
+      newPos = new Vec2(entity.pos.x, entity.pos.y).add(m);
+    }
+    if (intersects(newPos.x, entity.pos.y, entity.width, entity.depth, t)) {
+      m.x = 0;
+      newPos = new Vec2(entity.pos.x, entity.pos.y).add(m);
     }
   }
-  return movement;
+  return m;
 };
 
 /** @type {(ctx: CanvasRenderingContext2D, delta: number, input: Input) => void} */
@@ -322,6 +299,10 @@ export const updateAndRender = (ctx, delta, input) => {
   );
 
   player.pos.add(playerMovement);
+
+  if (input.heal) {
+    player.health = player.health + 10 > 100 ? 100 : player.health + 10;
+  }
 
   if (input.fire) {
     const mouseDirection = new Vec2(
